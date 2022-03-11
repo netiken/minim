@@ -189,7 +189,7 @@ pub(crate) struct Context {
     pub(crate) cur_time: Time,
     events: EventList,
 
-    // Configuration
+    // Configuration---threaded through `self.workload` to start new flows
     pub(crate) window: Bytes,
     pub(crate) dctcp_alpha: f64,
     pub(crate) dctcp_gain: f64,
