@@ -3,15 +3,17 @@ use crate::{
         bottleneck::Bottleneck,
         workload::{FlowDesc, Workload},
     },
+    queue::QDisc,
     simulation::Simulation,
     units::{BitsPerSec, Bytes, Nanosecs},
     Record,
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
-pub struct Config {
+pub struct Config<Q: QDisc> {
     #[builder(setter(into))]
     bandwidth: BitsPerSec,
+    queue: Q,
     flows: Vec<FlowDesc>,
 
     // Rate control configuration
@@ -27,10 +29,11 @@ pub struct Config {
     timeout: Option<Nanosecs>,
 }
 
-pub fn run(cfg: Config) -> Vec<Record> {
+pub fn run<Q: QDisc>(cfg: Config<Q>) -> Vec<Record> {
     let workload = Workload::new(cfg.flows.into());
     let bottleneck = Bottleneck::builder()
         .bandwidth(cfg.bandwidth)
+        .queue(cfg.queue)
         .marking_threshold(cfg.dctcp_marking_threshold)
         .build();
     let sim = Simulation::builder()

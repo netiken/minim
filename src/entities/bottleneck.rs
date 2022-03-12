@@ -1,17 +1,16 @@
 use crate::{
     entities::flow::FlowCmd,
     packet::{Ack, Packet},
-    queue::FifoQ,
+    queue::QDisc,
     simulation::{event::EventList, Context, SimulatorCmd},
     units::{BitsPerSec, Bytes},
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
-pub(crate) struct Bottleneck {
+pub(crate) struct Bottleneck<Q: QDisc> {
     #[builder(setter(into))]
     pub(crate) bandwidth: BitsPerSec,
-    #[builder(default, setter(skip))]
-    queue: FifoQ,
+    queue: Q,
     #[builder(default, setter(skip))]
     status: Status,
 
@@ -22,7 +21,7 @@ pub(crate) struct Bottleneck {
     marking_threshold: Bytes,
 }
 
-impl Bottleneck {
+impl<Q: QDisc> Bottleneck<Q> {
     fn enqueue(&mut self, pkt: Packet) {
         self.queue.enqueue(pkt);
         self.qsize += pkt.size;
@@ -39,7 +38,7 @@ impl Bottleneck {
     }
 }
 
-impl Bottleneck {
+impl<Q: QDisc> Bottleneck<Q> {
     #[must_use]
     pub(crate) fn receive(&mut self, pkt: Packet, ctx: Context) -> EventList {
         // Enqueue the packet and update state

@@ -13,6 +13,7 @@ use crate::{
         workload::{Workload, WorkloadCmd},
     },
     packet::Packet,
+    queue::QDisc,
     time::{Delta, Time},
     units::{BitsPerSec, Bytes},
 };
@@ -23,7 +24,7 @@ use self::{
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
-pub(crate) struct Simulation {
+pub(crate) struct Simulation<Q: QDisc> {
     // Run-time
     #[builder(default, setter(skip))]
     cur_time: Time,
@@ -34,7 +35,7 @@ pub(crate) struct Simulation {
     workload: Workload,
     #[builder(default, setter(skip))]
     flows: FxHashMap<FlowId, Flow>,
-    bottleneck: Bottleneck,
+    bottleneck: Bottleneck<Q>,
 
     // Rate control configuration
     #[builder(setter(into))]
@@ -51,7 +52,7 @@ pub(crate) struct Simulation {
     records: Vec<Record>,
 }
 
-impl Simulation {
+impl<Q: QDisc> Simulation<Q> {
     pub(crate) fn run(mut self) -> Vec<Record> {
         // Kick off the simulation by starting the workload
         let ev = Event::new(Time::ZERO, WorkloadCmd::new_step());
@@ -97,7 +98,7 @@ impl Simulation {
 }
 
 // Command handlers
-impl Simulation {
+impl<Q: QDisc> Simulation<Q> {
     fn apply(&mut self, cmd: Command) -> EventList {
         match cmd {
             Command::Simulator(cmd) => self.apply_simulator(cmd),

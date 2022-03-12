@@ -1,4 +1,5 @@
 use minim::{
+    queue::FifoQ,
     units::{Bytes, Gbps, Kilobytes, Mbps, Nanosecs, Secs},
     Config, FlowDesc, FlowId, Packet,
 };
@@ -27,6 +28,7 @@ fn ideal_fct() {
     ];
     let cfg = Config::builder()
         .bandwidth(Gbps::new(40))
+        .queue(FifoQ::new())
         .flows(flows)
         .window(Kilobytes::new(100))
         .dctcp_marking_threshold(Kilobytes::new(300))

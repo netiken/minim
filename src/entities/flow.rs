@@ -115,7 +115,7 @@ impl Flow {
             .btl2dst(self.btl2dst)
             .build();
 
-        // Send the packet to the bottleneck, arriving after `delta`.
+        // Send the packet to the bottleneck
         let bw_delta = self.rate.length(pkt.size).into_delta();
         ctx.schedule(
             self.src2btl.into_delta() + bw_delta,
