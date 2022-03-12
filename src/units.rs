@@ -113,6 +113,14 @@ impl Secs {
         Millisecs::new(self.0 * 1_000)
     }
 
+    pub const fn into_us(self) -> Microsecs {
+        self.into_ms().into_us()
+    }
+
+    pub const fn into_ns(self) -> Nanosecs {
+        self.into_us().into_ns()
+    }
+
     pub fn into_time(self) -> Time {
         self.into_ms().into_time()
     }
@@ -214,6 +222,21 @@ impl BitsPerSec {
     }
 }
 
+impl Mbps {
+    pub const fn into_bps(self) -> BitsPerSec {
+        let val = self.0 * 1_000_000;
+        BitsPerSec::new(val)
+    }
+
+    pub fn length(&self, size: Bytes) -> Nanosecs {
+        self.into_bps().length(size)
+    }
+
+    pub fn width(&self, delta: Nanosecs) -> Bytes {
+        self.into_bps().width(delta)
+    }
+}
+
 impl Gbps {
     pub const fn into_bps(self) -> BitsPerSec {
         let val = self.0 * 1_000_000_000;
@@ -231,6 +254,12 @@ impl Gbps {
 
     pub fn width(&self, delta: Nanosecs) -> Bytes {
         self.into_bps().width(delta)
+    }
+}
+
+impl From<Mbps> for BitsPerSec {
+    fn from(val: Mbps) -> Self {
+        val.into_bps()
     }
 }
 

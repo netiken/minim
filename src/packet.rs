@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, TypedBuilder)]
-pub(crate) struct Packet {
+pub struct Packet {
     pub(crate) flow_id: FlowId,
     pub(crate) size: Bytes,
     pub(crate) src2btl: Nanosecs,
@@ -15,8 +15,8 @@ pub(crate) struct Packet {
 }
 
 impl Packet {
-    pub(crate) const SZ_MIN: Bytes = Bytes::new(64);
-    pub(crate) const SZ_MAX: Bytes = Bytes::new(9000);
+    pub const SZ_MIN: Bytes = Bytes::new(64);
+    pub const SZ_MAX: Bytes = Bytes::new(9000);
 
     pub(crate) fn hrtt(&self) -> Nanosecs {
         self.src2btl + self.btl2dst

@@ -23,7 +23,7 @@ pub struct Config {
     #[builder(setter(into))]
     dctcp_ai: BitsPerSec,
 
-    #[builder(setter(into, strip_option))]
+    #[builder(default, setter(into, strip_option))]
     timeout: Option<Nanosecs>,
 }
 

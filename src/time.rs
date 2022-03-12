@@ -58,7 +58,7 @@ impl Time {
         Delta::new(self.0)
     }
 
-    pub fn into_nanos(self) -> Nanosecs {
+    pub fn into_ns(self) -> Nanosecs {
         assert!(self.0 <= u128::from(u64::MAX));
         Nanosecs::new(self.0 as u64)
     }
@@ -71,7 +71,7 @@ impl Delta {
         Time::new(self.0)
     }
 
-    pub fn into_nanos(self) -> Nanosecs {
+    pub fn into_ns(self) -> Nanosecs {
         assert!(self.0 <= u128::from(u64::MAX));
         Nanosecs::new(self.0 as u64)
     }

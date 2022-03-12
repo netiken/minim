@@ -28,7 +28,8 @@ impl Workload {
                 .gain(ctx.dctcp_gain)
                 .additive_inc(ctx.dctcp_ai)
                 .build();
-            ctx.schedule_now(SimulatorCmd::new_flow_arrive(flow));
+            let delta = flow.start.into_time() - ctx.cur_time;
+            ctx.schedule(delta, SimulatorCmd::new_flow_arrive(flow));
 
             // Reschedule the next flow arrival
             if let Some(&FlowDesc {

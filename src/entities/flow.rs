@@ -116,13 +116,16 @@ impl Flow {
             .build();
 
         // Send the packet to the bottleneck, arriving after `delta`.
-        ctx.schedule(self.src2btl.into_delta(), BottleneckCmd::new_receive(pkt));
+        let bw_delta = self.rate.length(pkt.size).into_delta();
+        ctx.schedule(
+            self.src2btl.into_delta() + bw_delta,
+            BottleneckCmd::new_receive(pkt),
+        );
 
         if !is_last {
             // Reschedule the flow
-            let delta = self.rate.length(pkt.size).into_delta();
-            ctx.schedule(delta, FlowCmd::new_step(self.id, self.version));
-            self.pending = Pending::new(now, pkt.size, self.rate, now + delta);
+            ctx.schedule(bw_delta, FlowCmd::new_step(self.id, self.version));
+            self.pending = Pending::new(now, pkt.size, self.rate, now + bw_delta);
         }
 
         ctx.into_events()

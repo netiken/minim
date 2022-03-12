@@ -3,7 +3,7 @@ use crate::{
     FlowId,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Record {
     pub id: FlowId,
     pub size: Bytes,

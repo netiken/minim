@@ -133,7 +133,7 @@ impl Simulation {
                         id: flow.id,
                         size: flow.size,
                         start: flow.start,
-                        fct: ctx.cur_time.into_nanos() - flow.start,
+                        fct: self.cur_time.into_ns() - flow.start,
                         ideal,
                     };
                     self.records.push(record);
