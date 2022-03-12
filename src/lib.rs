@@ -1,3 +1,4 @@
+pub mod driver;
 pub mod time;
 pub mod units;
 
@@ -9,4 +10,3 @@ pub(crate) mod simulation;
 
 pub use data::Record;
 pub use entities::flow::FlowId;
-pub use simulation::Simulation;

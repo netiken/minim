@@ -7,7 +7,7 @@ use crate::{
 
 use super::flow::{Flow, FlowId};
 
-#[derive(Debug, Clone, typed_builder::TypedBuilder)]
+#[derive(Debug, Clone, derive_new::new)]
 pub(crate) struct Workload {
     flows: VecDeque<FlowDesc>,
 }
@@ -25,7 +25,6 @@ impl Workload {
                 .src2btl(flow.src2btl)
                 .btl2dst(flow.btl2dst)
                 .window(ctx.window)
-                .alpha(ctx.dctcp_alpha)
                 .gain(ctx.dctcp_gain)
                 .additive_inc(ctx.dctcp_ai)
                 .build();

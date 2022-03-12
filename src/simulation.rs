@@ -22,32 +22,37 @@ use self::{
     schedule::Schedule,
 };
 
-#[derive(Debug)]
-pub struct Simulation {
+#[derive(Debug, typed_builder::TypedBuilder)]
+pub(crate) struct Simulation {
     // Run-time
+    #[builder(default, setter(skip))]
     cur_time: Time,
+    #[builder(default, setter(skip))]
     schedule: Schedule,
 
     // Entities
     workload: Workload,
+    #[builder(default, setter(skip))]
     flows: FxHashMap<FlowId, Flow>,
     bottleneck: Bottleneck,
 
     // Rate control configuration
+    #[builder(setter(into))]
     window: Bytes,
-    dctcp_alpha: f64,
     dctcp_gain: f64,
+    #[builder(setter(into))]
     dctcp_ai: BitsPerSec,
 
     // Used for termination
     timeout: Option<Time>,
 
     // Data accumulator
+    #[builder(default, setter(skip))]
     records: Vec<Record>,
 }
 
 impl Simulation {
-    pub fn run(mut self) -> Vec<Record> {
+    pub(crate) fn run(mut self) -> Vec<Record> {
         // Kick off the simulation by starting the workload
         let ev = Event::new(Time::ZERO, WorkloadCmd::new_step());
         self.schedule.push(ev);
@@ -81,7 +86,6 @@ impl Simulation {
             cur_time: self.cur_time,
             events: EventList::new(),
             window: self.window,
-            dctcp_alpha: self.dctcp_alpha,
             dctcp_gain: self.dctcp_gain,
             dctcp_ai: self.dctcp_ai,
         }
@@ -191,7 +195,6 @@ pub(crate) struct Context {
 
     // Configuration---threaded through `self.workload` to start new flows
     pub(crate) window: Bytes,
-    pub(crate) dctcp_alpha: f64,
     pub(crate) dctcp_gain: f64,
     pub(crate) dctcp_ai: BitsPerSec,
 }

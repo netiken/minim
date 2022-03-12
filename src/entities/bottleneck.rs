@@ -10,6 +10,7 @@ use crate::{
 pub(crate) struct Bottleneck {
     #[builder(setter(into))]
     pub(crate) bandwidth: BitsPerSec,
+    #[builder(default, setter(skip))]
     queue: FifoQ,
     #[builder(default, setter(skip))]
     status: Status,

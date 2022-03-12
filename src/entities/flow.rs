@@ -40,6 +40,7 @@ pub(crate) struct Flow {
     snd_una: Bytes,
 
     // DCTCP
+    #[builder(default = 1.0, setter(skip))]
     alpha: f64,
     gain: f64,
     #[builder(setter(into))]
