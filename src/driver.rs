@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::{
     entities::{
         bottleneck::Bottleneck,
@@ -45,4 +47,18 @@ pub fn run<Q: QDisc>(cfg: Config<Q>) -> Vec<Record> {
         .timeout(cfg.timeout.map(|v| v.into_time()))
         .build();
     sim.run()
+}
+
+pub fn read_flows(path: impl AsRef<Path>) -> Result<Vec<FlowDesc>, Error> {
+    let s = std::fs::read_to_string(path)?;
+    Ok(serde_json::from_str(&s)?)
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("serde error")]
+    Serde(#[from] serde_json::Error),
+
+    #[error("IO error")]
+    Io(#[from] std::io::Error),
 }

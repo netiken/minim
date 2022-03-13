@@ -165,7 +165,7 @@ impl Flow {
                 self.high_seq = self.snd_nxt;
             }
             if new_batch {
-                let new_rate = self.rate + self.additive_inc;
+                let new_rate = self.rate.saturating_add(self.additive_inc);
                 self.rate = cmp::min(self.max_rate, new_rate);
             }
         }
