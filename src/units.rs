@@ -65,6 +65,10 @@ macro_rules! unit {
             pub const fn saturating_sub(self, rhs: Self) -> Self {
                 Self::new(self.0.saturating_sub(rhs.0))
             }
+
+            pub fn frac(a: Self, b: Self) -> f64 {
+                a.into_f64() / b.into_f64()
+            }
         }
     };
 }

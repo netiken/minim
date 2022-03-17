@@ -1,14 +1,13 @@
 use std::path::Path;
 
+use rustc_hash::FxHashMap;
+
 use crate::{
-    entities::{
-        bottleneck::Bottleneck,
-        workload::{FlowDesc, Workload},
-    },
+    entities::{bottleneck::Bottleneck, source::Source, workload::Workload},
     queue::QDisc,
     simulation::Simulation,
     units::{BitsPerSec, Bytes, Nanosecs},
-    Record,
+    FlowDesc, Record, SourceDesc,
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
@@ -16,6 +15,7 @@ pub struct Config<Q: QDisc> {
     #[builder(setter(into))]
     bandwidth: BitsPerSec,
     queue: Q,
+    sources: Vec<SourceDesc>,
     flows: Vec<FlowDesc>,
 
     // Rate control configuration
@@ -33,6 +33,18 @@ pub struct Config<Q: QDisc> {
 
 pub fn run<Q: QDisc>(cfg: Config<Q>) -> Vec<Record> {
     let workload = Workload::new(cfg.flows.into());
+    let sources = cfg
+        .sources
+        .into_iter()
+        .map(|s| {
+            let source = Source::builder()
+                .id(s.id)
+                .delay2btl(s.delay2btl)
+                .link_rate(s.link_rate)
+                .build();
+            (s.id, source)
+        })
+        .collect::<FxHashMap<_, _>>();
     let bottleneck = Bottleneck::builder()
         .bandwidth(cfg.bandwidth)
         .queue(cfg.queue)
@@ -40,6 +52,7 @@ pub fn run<Q: QDisc>(cfg: Config<Q>) -> Vec<Record> {
         .build();
     let sim = Simulation::builder()
         .workload(workload)
+        .sources(sources)
         .bottleneck(bottleneck)
         .window(cfg.window)
         .dctcp_gain(cfg.dctcp_gain)

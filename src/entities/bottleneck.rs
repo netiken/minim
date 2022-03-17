@@ -1,8 +1,8 @@
 use crate::{
-    entities::flow::FlowCmd,
+    entities::source::SourceCmd,
     packet::{Ack, Packet},
     queue::QDisc,
-    simulation::{event::EventList, Context, SimulatorCmd},
+    simulation::{event::EventList, Context},
     units::{BitsPerSec, Bytes},
 };
 
@@ -60,19 +60,19 @@ impl<Q: QDisc> Bottleneck<Q> {
                 // Service the packet
                 let bw_delta = self.bandwidth.length(pkt.size).into_delta();
                 ctx.schedule(bw_delta, BottleneckCmd::new_step());
-                // Signal the flow to increase its window
+                // Send an ACK back to the flow
                 let prop_delta = (pkt.btl2dst + pkt.hrtt()).into_delta();
                 let marked = self.qsize > self.marking_threshold;
                 ctx.schedule(
                     bw_delta + prop_delta,
-                    FlowCmd::new_rcv_ack(pkt.flow_id, Ack::new(pkt.size, marked)),
+                    SourceCmd::new_rcv_ack(pkt.source_id, pkt.flow_id, Ack::new(pkt.size, marked)),
                 );
                 if pkt.is_last {
                     // A flow is defined to be departed when all of its bytes
                     // have been delivered to the destination.
                     ctx.schedule(
                         bw_delta + pkt.btl2dst.into_delta(),
-                        SimulatorCmd::new_flow_depart(pkt.flow_id),
+                        SourceCmd::new_flow_depart(pkt.source_id, pkt.flow_id),
                     );
                 }
             }

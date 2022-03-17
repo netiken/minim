@@ -62,6 +62,10 @@ impl Time {
         assert!(self.0 <= u128::from(u64::MAX));
         Nanosecs::new(self.0 as u64)
     }
+
+    pub const fn saturating_sub(self, rhs: Self) -> Delta {
+        Delta::new(self.0.saturating_sub(rhs.0))
+    }
 }
 
 time_unit!(Delta);

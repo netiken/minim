@@ -1,18 +1,15 @@
 pub(crate) mod event;
 mod schedule;
 
-use std::cmp;
-
 use rustc_hash::FxHashMap;
 
 use crate::{
     data::Record,
     entities::{
         bottleneck::{Bottleneck, BottleneckCmd},
-        flow::{Flow, FlowCmd, FlowId},
+        source::{Source, SourceCmd, SourceId},
         workload::{Workload, WorkloadCmd},
     },
-    packet::Packet,
     queue::QDisc,
     time::{Delta, Time},
     units::{BitsPerSec, Bytes},
@@ -33,8 +30,7 @@ pub(crate) struct Simulation<Q: QDisc> {
 
     // Entities
     workload: Workload,
-    #[builder(default, setter(skip))]
-    flows: FxHashMap<FlowId, Flow>,
+    sources: FxHashMap<SourceId, Source>,
     bottleneck: Bottleneck<Q>,
 
     // Rate control configuration
@@ -46,10 +42,6 @@ pub(crate) struct Simulation<Q: QDisc> {
 
     // Used for termination
     timeout: Option<Time>,
-
-    // Data accumulator
-    #[builder(default, setter(skip))]
-    records: Vec<Record>,
 }
 
 impl<Q: QDisc> Simulation<Q> {
@@ -62,7 +54,7 @@ impl<Q: QDisc> Simulation<Q> {
             self.step();
         }
         // Return the FCT records
-        self.records
+        self.finish()
     }
 
     fn step(&mut self) {
@@ -86,14 +78,18 @@ impl<Q: QDisc> Simulation<Q> {
         Context {
             cur_time: self.cur_time,
             events: EventList::new(),
+            btl_bandwidth: self.bottleneck.bandwidth,
             window: self.window,
             dctcp_gain: self.dctcp_gain,
             dctcp_ai: self.dctcp_ai,
         }
     }
 
-    fn flow_mut(&mut self, id: FlowId) -> Option<&mut Flow> {
-        self.flows.get_mut(&id)
+    fn finish(self) -> Vec<Record> {
+        self.sources
+            .into_iter()
+            .flat_map(|(_, source)| source.records.into_iter())
+            .collect()
     }
 }
 
@@ -101,47 +97,11 @@ impl<Q: QDisc> Simulation<Q> {
 impl<Q: QDisc> Simulation<Q> {
     fn apply(&mut self, cmd: Command) -> EventList {
         match cmd {
-            Command::Simulator(cmd) => self.apply_simulator(cmd),
             Command::Workload(cmd) => self.apply_workload(cmd),
-            Command::Flow(cmd) => self.apply_flow(cmd),
+            Command::Source(cmd) => self.apply_source(cmd),
             Command::Bottleneck(cmd) => self.apply_bottleneck(cmd),
             Command::Test => unreachable!(),
         }
-    }
-
-    fn apply_simulator(&mut self, cmd: SimulatorCmd) -> EventList {
-        let mut ctx = self.context();
-        match cmd {
-            SimulatorCmd::FlowArrive(flow) => {
-                // Schedule the flow immediately
-                self.flows.insert(flow.id, flow);
-                ctx.schedule_now(FlowCmd::new_step(flow.id, u128::default()));
-            }
-            SimulatorCmd::FlowDepart(fid) => {
-                if let Some(flow) = self.flows.remove(&fid) {
-                    // Compute the ideal FCT
-                    let bw_hop1 = flow.max_rate;
-                    let bw_hop2 = self.bottleneck.bandwidth;
-                    let sz_head = cmp::min(Packet::SZ_MAX, flow.size);
-                    let sz_rest = flow.size - sz_head;
-                    let ideal = bw_hop1.length(sz_head)
-                        + bw_hop2.length(sz_head)
-                        + cmp::min(bw_hop1, bw_hop2).length(sz_rest)
-                        + flow.src2btl
-                        + flow.btl2dst;
-                    // Store the flow's FCT record
-                    let record = Record {
-                        id: flow.id,
-                        size: flow.size,
-                        start: flow.start,
-                        fct: self.cur_time.into_ns() - flow.start,
-                        ideal,
-                    };
-                    self.records.push(record);
-                }
-            }
-        }
-        ctx.into_events()
     }
 
     fn apply_workload(&mut self, cmd: WorkloadCmd) -> EventList {
@@ -151,17 +111,25 @@ impl<Q: QDisc> Simulation<Q> {
         }
     }
 
-    fn apply_flow(&mut self, cmd: FlowCmd) -> EventList {
+    fn apply_source(&mut self, cmd: SourceCmd) -> EventList {
         let ctx = self.context();
         match cmd {
-            FlowCmd::Step { id, version } => match self.flow_mut(id) {
-                Some(flow) => flow.step(version, ctx),
-                None => ctx.into_events(),
-            },
-            FlowCmd::RcvAck { id, ack } => match self.flow_mut(id) {
-                Some(flow) => flow.rcv_ack(ack, ctx),
-                None => ctx.into_events(),
-            },
+            SourceCmd::TrySend { id, version } => {
+                let source = self.sources.get_mut(&id).expect("invalid source ID");
+                source.try_send(version, ctx)
+            }
+            SourceCmd::RcvAck { source, flow, ack } => {
+                let source = self.sources.get_mut(&source).expect("invalid source ID");
+                source.rcv_ack(flow, ack, ctx)
+            }
+            SourceCmd::FlowArrive { source, desc } => {
+                let source = self.sources.get_mut(&source).expect("invalid source ID");
+                source.flow_arrive(desc, ctx)
+            }
+            SourceCmd::FlowDepart { source, flow } => {
+                let source = self.sources.get_mut(&source).expect("invalid source ID");
+                source.flow_depart(flow, ctx)
+            }
         }
     }
 
@@ -176,17 +144,10 @@ impl<Q: QDisc> Simulation<Q> {
 
 #[derive(Debug, Clone, derive_more::From)]
 pub(crate) enum Command {
-    Simulator(SimulatorCmd),
     Workload(WorkloadCmd),
-    Flow(FlowCmd),
+    Source(SourceCmd),
     Bottleneck(BottleneckCmd),
     Test,
-}
-
-#[derive(Debug, Clone, Copy, derive_new::new)]
-pub(crate) enum SimulatorCmd {
-    FlowArrive(Flow),
-    FlowDepart(FlowId),
 }
 
 #[derive(Debug)]
@@ -194,7 +155,8 @@ pub(crate) struct Context {
     pub(crate) cur_time: Time,
     events: EventList,
 
-    // Configuration---threaded through `self.workload` to start new flows
+    // Configuration
+    pub(crate) btl_bandwidth: BitsPerSec,
     pub(crate) window: Bytes,
     pub(crate) dctcp_gain: f64,
     pub(crate) dctcp_ai: BitsPerSec,
@@ -206,6 +168,7 @@ impl Context {
         self.events.push(Event::new(time, cmd.into()));
     }
 
+    #[allow(unused)]
     pub(crate) fn schedule_now(&mut self, cmd: impl Into<Command>) {
         self.schedule(Delta::ZERO, cmd);
     }

@@ -1,13 +1,15 @@
 use typed_builder::TypedBuilder;
 
 use crate::{
-    entities::flow::FlowId,
+    entities::source::SourceId,
     units::{Bytes, Nanosecs},
+    FlowId,
 };
 
 #[derive(Debug, Clone, Copy, TypedBuilder)]
 pub struct Packet {
     pub(crate) flow_id: FlowId,
+    pub(crate) source_id: SourceId,
     pub(crate) size: Bytes,
     pub(crate) src2btl: Nanosecs,
     pub(crate) btl2dst: Nanosecs,
@@ -15,8 +17,7 @@ pub struct Packet {
 }
 
 impl Packet {
-    pub const SZ_MIN: Bytes = Bytes::new(64);
-    pub const SZ_MAX: Bytes = Bytes::new(9000);
+    pub const SZ_MAX: Bytes = Bytes::new(1000);
 
     pub(crate) fn hrtt(&self) -> Nanosecs {
         self.src2btl + self.btl2dst
