@@ -22,7 +22,7 @@ pub(crate) struct Flow {
     // Rate management
     #[builder(setter(into))]
     rate: BitsPerSec,
-    #[builder(default = BitsPerSec::new(100_000_000))]
+    #[builder(default = BitsPerSec::new(1_000_000_000))]
     min_rate: BitsPerSec,
     #[builder(setter(into))]
     max_rate: BitsPerSec,
@@ -89,14 +89,15 @@ impl Flow {
         let sz_payload = cmp::min(self.bytes_left(), Packet::SZ_MAX);
         let sz_payload = cmp::min(sz_payload, self.usable_window());
         self.snd_nxt += sz_payload;
-        let rate_delta = self.rate.length(sz_payload).into_delta();
+        let sz_pkt = sz_payload + Packet::SZ_HDR;
+        let rate_delta = self.rate.length(sz_pkt).into_delta();
         self.tnext = now + rate_delta;
 
         let is_last = self.bytes_left() == Bytes::ZERO;
         Packet::builder()
             .flow_id(self.id)
             .source_id(self.source)
-            .size(sz_payload)
+            .size(sz_pkt)
             .is_last(is_last)
             .src2btl(self.src2btl)
             .btl2dst(self.btl2dst)

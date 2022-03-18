@@ -131,11 +131,15 @@ impl Source {
         // Compute the ideal FCT
         let bw_hop1 = flow.max_rate;
         let bw_hop2 = ctx.btl_bandwidth;
+        let bw_min = cmp::min(bw_hop1, bw_hop2);
         let sz_head = cmp::min(Packet::SZ_MAX, flow.size);
         let sz_rest = flow.size - sz_head;
-        let ideal = bw_hop1.length(sz_head)
-            + bw_hop2.length(sz_head)
-            + cmp::min(bw_hop1, bw_hop2).length(sz_rest)
+        let nr_pkts_rest = Packet::max_count_in(sz_rest);
+        let hdr_delay = bw_min.length(Packet::SZ_HDR);
+        let ideal = bw_hop1.length(sz_head + Packet::SZ_HDR)
+            + bw_hop2.length(sz_head + Packet::SZ_HDR)
+            + bw_min.length(sz_rest)
+            + hdr_delay.scale_by(nr_pkts_rest as f64)
             + flow.src2btl
             + flow.btl2dst;
         // Store the flow's FCT record
@@ -195,8 +199,7 @@ impl FlowQ {
             let flow = self.members.get_mut(&id).unwrap();
             match (flow.is_rate_bound(now), flow.is_win_bound()) {
                 (false, false) => {
-                    // This flow can send, so there's nothing left to do but update the order. The
-                    // returned flow is moved to the back of the ordering.
+                    // This flow can send, so there's nothing left to do but update the order.
                     let pkt = flow.next_packet(now);
                     let id = flow.id;
                     if flow.bytes_left() == Bytes::ZERO {
@@ -242,12 +245,10 @@ impl FlowQ {
 enum FlowQResult {
     // The next packet to send
     Found { pkt: Packet },
-
-    // The next two aren't mutually exclusive--it's possible for all flows to be rate-bound and
-    // window-bound. Where both are true, we return the `RateBound` variant.
+    // Rate-bound, but not window-bound
     RateBound { tnext: Time },
+    // Window-bound
     WinBound,
-
     // No flows in the flow queue
     Empty,
 }

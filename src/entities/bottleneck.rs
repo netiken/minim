@@ -62,10 +62,15 @@ impl<Q: QDisc> Bottleneck<Q> {
                 ctx.schedule(bw_delta, BottleneckCmd::new_step());
                 // Send an ACK back to the flow
                 let prop_delta = (pkt.btl2dst + pkt.hrtt()).into_delta();
+                let nr_bytes_to_ack = pkt.size - Packet::SZ_HDR;
                 let marked = self.qsize > self.marking_threshold;
                 ctx.schedule(
                     bw_delta + prop_delta,
-                    SourceCmd::new_rcv_ack(pkt.source_id, pkt.flow_id, Ack::new(pkt.size, marked)),
+                    SourceCmd::new_rcv_ack(
+                        pkt.source_id,
+                        pkt.flow_id,
+                        Ack::new(nr_bytes_to_ack, marked),
+                    ),
                 );
                 if pkt.is_last {
                     // A flow is defined to be departed when all of its bytes
