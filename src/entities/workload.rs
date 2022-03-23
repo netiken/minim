@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use crate::{
     flow::FlowDesc,
-    simulation::{event::EventList, Context},
+    simulation::{event::EventList, Context}, units::Bytes,
 };
 
 use super::source::SourceCmd;
@@ -16,8 +16,10 @@ impl Workload {
     #[must_use]
     pub(crate) fn step(&mut self, mut ctx: Context) -> EventList {
         if let Some(flow) = self.flows.pop_front() {
-            let delta = flow.start.into_time() - ctx.cur_time;
-            ctx.schedule(delta, SourceCmd::new_flow_arrive(flow.source, flow));
+            if flow.size > Bytes::ZERO {
+                let delta = flow.start.into_time() - ctx.cur_time;
+                ctx.schedule(delta, SourceCmd::new_flow_arrive(flow.source, flow));
+            }
 
             // Reschedule the next flow arrival
             if let Some(&FlowDesc {
