@@ -1,7 +1,7 @@
 use minim::{
     queue::FifoQ,
     units::{Bytes, Gbps, Kilobytes, Mbps, Nanosecs, Secs},
-    Config, FlowDesc, FlowId, Packet, SourceDesc, SourceId,
+    Config, FlowDesc, FlowId, SourceDesc, SourceId,
 };
 
 // Make sure FCTs match up for short flows and long flows. For long flows, there may be some minor
@@ -24,7 +24,7 @@ fn ideal_fct() {
         FlowDesc {
             id: FlowId::new(1),
             source: SourceId::ZERO,
-            size: Packet::SZ_MAX.scale_by(1_000.0),
+            size: Bytes::new(1_000_000),
             start: Secs::new(2).into_ns(),
             delay2dst: Nanosecs::new(2_000),
         },

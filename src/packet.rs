@@ -24,7 +24,7 @@ impl Packet {
         self.src2btl + self.btl2dst
     }
 
-    pub(crate) fn max_count_in(size: Bytes) -> usize {
+    pub(crate) fn min_count_in(size: Bytes) -> usize {
         if size == Bytes::ZERO {
             0
         } else {

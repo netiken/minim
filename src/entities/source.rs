@@ -132,16 +132,32 @@ impl Source {
         let bw_hop1 = flow.max_rate;
         let bw_hop2 = ctx.btl_bandwidth;
         let bw_min = cmp::min(bw_hop1, bw_hop2);
-        let sz_head = cmp::min(Packet::SZ_MAX, flow.size);
-        let sz_rest = flow.size - sz_head;
-        let nr_pkts_rest = Packet::max_count_in(sz_rest);
-        let hdr_delay = bw_min.length(Packet::SZ_HDR);
-        let ideal = bw_hop1.length(sz_head + Packet::SZ_HDR)
-            + bw_hop2.length(sz_head + Packet::SZ_HDR)
-            + bw_min.length(sz_rest)
-            + hdr_delay.scale_by(nr_pkts_rest as f64)
-            + flow.src2btl
-            + flow.btl2dst;
+        let sz_head_ = cmp::min(Packet::SZ_MAX, flow.size);
+        let sz_head = (sz_head_ != Bytes::ZERO)
+            .then(|| sz_head_ + Packet::SZ_HDR)
+            .unwrap_or(Bytes::ZERO);
+        let sz_rest_ = flow.size - sz_head_;
+        let head_delay = bw_hop1.length(sz_head) + bw_hop2.length(sz_head);
+        let rest_delay = {
+            let nr_full_pkts = sz_rest_.into_usize() / Packet::SZ_MAX.into_usize();
+            let sz_full_pkt = Packet::SZ_MAX + Packet::SZ_HDR;
+            let sz_partial_pkt_ = Bytes::new(sz_rest_.into_u64() % Packet::SZ_MAX.into_u64());
+            let sz_partial_pkt = (sz_partial_pkt_ != Bytes::ZERO)
+                .then(|| sz_partial_pkt_ + Packet::SZ_HDR)
+                .unwrap_or(Bytes::ZERO);
+            bw_min.length(sz_full_pkt).scale_by(nr_full_pkts as f64) + bw_min.length(sz_partial_pkt)
+        };
+        let prop_delay = flow.src2btl + flow.btl2dst;
+        let ideal = head_delay + rest_delay + prop_delay;
+
+        // let nr_pkts_rest = Packet::min_count_in(sz_rest);
+        // let hdr_delay = bw_min.length(Packet::SZ_HDR);
+        // let ideal = bw_hop1.length(sz_head + Packet::SZ_HDR)
+        //     + bw_hop2.length(sz_head + Packet::SZ_HDR)
+        //     + bw_min.length(sz_rest)
+        //     + hdr_delay.scale_by(nr_pkts_rest as f64)
+        //     + flow.src2btl
+        //     + flow.btl2dst;
         // Store the flow's FCT record
         let record = Record {
             id: flow.id,
@@ -153,6 +169,28 @@ impl Source {
         self.records.push(record);
         ctx.into_events()
     }
+    // let bandwidths = hops.iter().map(|c| c.bandwidth()).collect::<Vec<_>>();
+    // let min_bw = bandwidths.iter().min().unwrap();
+    // let sz_head_ = cmp::min(SZ_PKTMAX, size);
+    // let sz_head = (sz_head_ != Bytes::ZERO)
+    //     .then(|| sz_head_ + SZ_HDR)
+    //     .unwrap_or(Bytes::ZERO);
+    // let sz_rest_ = size - sz_head_;
+    // let head_delay = bandwidths
+    //     .iter()
+    //     .map(|bw| bw.length(sz_head))
+    //     .sum::<Nanosecs>();
+    // let rest_delay = {
+    //     let nr_full_pkts = sz_rest_.into_usize() / SZ_PKTMAX.into_usize();
+    //     let sz_full_pkt = SZ_PKTMAX + SZ_HDR;
+    //     let sz_partial_pkt_ = Bytes::new(sz_rest_.into_u64() % SZ_PKTMAX.into_u64());
+    //     let sz_partial_pkt = (sz_partial_pkt_ != Bytes::ZERO)
+    //         .then(|| sz_partial_pkt_ + SZ_HDR)
+    //         .unwrap_or(Bytes::ZERO);
+    //     min_bw.length(sz_full_pkt).scale_by(nr_full_pkts as f64) + min_bw.length(sz_partial_pkt)
+    // };
+    // let prop_delay = hops.iter().map(|c| c.delay()).sum::<Nanosecs>();
+    // head_delay + rest_delay + prop_delay
 }
 
 #[derive(Debug, Copy, Clone, derive_new::new)]

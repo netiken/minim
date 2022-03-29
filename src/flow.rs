@@ -116,12 +116,12 @@ impl Flow {
             new_batch = true;
             if self.last_update_seq == Bytes::ZERO {
                 // First RTT
-                self.batch_size = Packet::max_count_in(self.snd_nxt);
+                self.batch_size = Packet::min_count_in(self.snd_nxt);
             } else {
                 let frac = (self.marked_count as f64 / self.batch_size as f64).clamp(0.0, 1.0);
                 self.alpha = (1.0 - self.gain) * self.alpha + self.gain * frac;
                 self.marked_count = 0;
-                self.batch_size = Packet::max_count_in(self.snd_nxt - self.snd_una);
+                self.batch_size = Packet::min_count_in(self.snd_nxt - self.snd_una);
             }
             self.last_update_seq = self.snd_nxt;
         }
