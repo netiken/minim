@@ -301,7 +301,7 @@ struct FlowInfo {
     max_rate: BitsPerSec,
 }
 
-#[derive(Debug, Clone, Copy, typed_builder::TypedBuilder)]
+#[derive(Debug, Clone, Copy, typed_builder::TypedBuilder, serde::Serialize, serde::Deserialize)]
 pub struct SourceDesc {
     pub id: SourceId,
     #[builder(setter(into))]

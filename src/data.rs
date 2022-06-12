@@ -5,7 +5,7 @@ use crate::{
     FlowId,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Record {
     pub id: FlowId,
     pub size: Bytes,
