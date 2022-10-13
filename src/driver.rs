@@ -35,6 +35,13 @@ pub struct Config<Q: QDisc> {
     #[builder(setter(into))]
     pub dctcp_ai: BitsPerSec,
 
+    /// The maximum packet size.
+    #[builder(setter(into))]
+    pub sz_pktmax: Bytes,
+    /// The packet header size.
+    #[builder(setter(into))]
+    pub sz_pkthdr: Bytes,
+
     /// The simulation timeout, if any.
     #[builder(default, setter(into, strip_option))]
     pub timeout: Option<Nanosecs>,
@@ -68,6 +75,8 @@ pub fn run<Q: QDisc>(mut cfg: Config<Q>) -> Vec<Record> {
         .window(cfg.window)
         .dctcp_gain(cfg.dctcp_gain)
         .dctcp_ai(cfg.dctcp_ai)
+        .sz_pktmax(cfg.sz_pktmax)
+        .sz_pkthdr(cfg.sz_pkthdr)
         .timeout(cfg.timeout.map(|v| v.into_time()))
         .build();
     sim.run()

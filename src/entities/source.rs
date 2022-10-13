@@ -46,7 +46,7 @@ impl Source {
         if version != self.version {
             return ctx.into_events();
         }
-        match self.flow_queue.next_packet(ctx.cur_time) {
+        match self.flow_queue.next_packet(&ctx) {
             FlowQResult::Found { pkt } => {
                 // Send the packet to the bottleneck
                 let bw_delta = self.link_rate.length(pkt.size).into_delta();
@@ -74,7 +74,7 @@ impl Source {
     #[must_use]
     pub(crate) fn rcv_ack(&mut self, flow_id: FlowId, ack: Ack, mut ctx: Context) -> EventList {
         if let Some(flow) = self.flow_queue.get_flow_mut(flow_id) {
-            flow.rcv_ack(ack);
+            flow.rcv_ack(ack, &ctx);
             if !flow.is_win_bound() && flow.tnext < self.tnext {
                 let tnext = cmp::max(self.earliest_tnext, flow.tnext);
                 self.version += 1;
@@ -132,18 +132,18 @@ impl Source {
         let bw_hop1 = flow.max_rate;
         let bw_hop2 = ctx.btl_bandwidth;
         let bw_min = cmp::min(bw_hop1, bw_hop2);
-        let sz_head_ = cmp::min(Packet::SZ_MAX, flow.size);
+        let sz_head_ = cmp::min(ctx.sz_pktmax, flow.size);
         let sz_head = (sz_head_ != Bytes::ZERO)
-            .then(|| sz_head_ + Packet::SZ_HDR)
+            .then(|| sz_head_ + ctx.sz_pkthdr)
             .unwrap_or(Bytes::ZERO);
         let sz_rest_ = flow.size - sz_head_;
         let head_delay = bw_hop1.length(sz_head) + bw_hop2.length(sz_head);
         let rest_delay = {
-            let nr_full_pkts = sz_rest_.into_usize() / Packet::SZ_MAX.into_usize();
-            let sz_full_pkt = Packet::SZ_MAX + Packet::SZ_HDR;
-            let sz_partial_pkt_ = Bytes::new(sz_rest_.into_u64() % Packet::SZ_MAX.into_u64());
+            let nr_full_pkts = sz_rest_.into_usize() / ctx.sz_pktmax.into_usize();
+            let sz_full_pkt = ctx.sz_pktmax + ctx.sz_pkthdr;
+            let sz_partial_pkt_ = Bytes::new(sz_rest_.into_u64() % ctx.sz_pktmax.into_u64());
             let sz_partial_pkt = (sz_partial_pkt_ != Bytes::ZERO)
-                .then(|| sz_partial_pkt_ + Packet::SZ_HDR)
+                .then(|| sz_partial_pkt_ + ctx.sz_pkthdr)
                 .unwrap_or(Bytes::ZERO);
             bw_min.length(sz_full_pkt).scale_by(nr_full_pkts as f64) + bw_min.length(sz_partial_pkt)
         };
@@ -195,7 +195,7 @@ struct FlowQ {
 }
 
 impl FlowQ {
-    fn next_packet(&mut self, now: Time) -> FlowQResult {
+    fn next_packet(&mut self, ctx: &Context) -> FlowQResult {
         if self.order.is_empty() {
             return FlowQResult::Empty;
         }
@@ -205,10 +205,10 @@ impl FlowQ {
             let idx = (i + self.rr_next) % nr_flows;
             let id = self.order[idx];
             let flow = self.members.get_mut(&id).unwrap();
-            match (flow.is_rate_bound(now), flow.is_win_bound()) {
+            match (flow.is_rate_bound(ctx.cur_time), flow.is_win_bound()) {
                 (false, false) => {
                     // This flow can send, so there's nothing left to do but update the order.
-                    let pkt = flow.next_packet(now);
+                    let pkt = flow.next_packet(ctx);
                     let id = flow.id;
                     if flow.bytes_left() == Bytes::ZERO {
                         self.order.remove(idx);
@@ -230,7 +230,7 @@ impl FlowQ {
         }
         match min_viable_tnext {
             Some(tnext) => {
-                assert!(tnext > now); // otherwise, we would've sent it
+                assert!(tnext > ctx.cur_time); // otherwise, we would've sent it
                 FlowQResult::RateBound { tnext }
             }
             None => FlowQResult::WinBound,

@@ -2,6 +2,7 @@ use std::cmp;
 
 use crate::{
     packet::Ack,
+    simulation::Context,
     time::Time,
     units::{BitsPerSec, Bytes, Nanosecs},
     Packet, SourceId,
@@ -80,18 +81,18 @@ impl Flow {
         self.usable_window() == Bytes::ZERO
     }
 
-    pub(crate) fn next_packet(&mut self, now: Time) -> Packet {
+    pub(crate) fn next_packet(&mut self, ctx: &Context) -> Packet {
         assert!(self.bytes_left() > Bytes::ZERO);
         assert!(self.usable_window() > Bytes::ZERO);
 
         // Amount to send is capped by the remaining flow size, the maximum packet size, and the
         // usable window size.
-        let sz_payload = cmp::min(self.bytes_left(), Packet::SZ_MAX);
+        let sz_payload = cmp::min(self.bytes_left(), ctx.sz_pktmax);
         let sz_payload = cmp::min(sz_payload, self.usable_window());
         self.snd_nxt += sz_payload;
-        let sz_pkt = sz_payload + Packet::SZ_HDR;
+        let sz_pkt = sz_payload + ctx.sz_pkthdr;
         let rate_delta = self.rate.length(sz_pkt).into_delta();
-        self.tnext = now + rate_delta;
+        self.tnext = ctx.cur_time + rate_delta;
 
         let is_last = self.bytes_left() == Bytes::ZERO;
         Packet::builder()
@@ -105,7 +106,7 @@ impl Flow {
     }
 
     // TODO: update `tnext`
-    pub(crate) fn rcv_ack(&mut self, ack: Ack) {
+    pub(crate) fn rcv_ack(&mut self, ack: Ack, ctx: &Context) {
         self.snd_una += ack.nr_bytes;
         let mut new_batch = false;
         if ack.marked {
@@ -116,12 +117,12 @@ impl Flow {
             new_batch = true;
             if self.last_update_seq == Bytes::ZERO {
                 // First RTT
-                self.batch_size = Packet::min_count_in(self.snd_nxt);
+                self.batch_size = Packet::min_count_in(self.snd_nxt, ctx.sz_pktmax);
             } else {
                 let frac = (self.marked_count as f64 / self.batch_size as f64).clamp(0.0, 1.0);
                 self.alpha = (1.0 - self.gain) * self.alpha + self.gain * frac;
                 self.marked_count = 0;
-                self.batch_size = Packet::min_count_in(self.snd_nxt - self.snd_una);
+                self.batch_size = Packet::min_count_in(self.snd_nxt - self.snd_una, ctx.sz_pktmax);
             }
             self.last_update_seq = self.snd_nxt;
         }

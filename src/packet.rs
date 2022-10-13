@@ -19,20 +19,20 @@ pub struct Packet {
 
 // TODO: `SZ_MAX` and `SZ_HDR` should be configurable somehow
 impl Packet {
-    /// The maximum packet size.
-    pub const SZ_MAX: Bytes = Bytes::new(1000);
-    /// The size of the packet header.
-    pub const SZ_HDR: Bytes = Bytes::new(48);
+    // /// The maximum packet size.
+    // pub const SZ_MAX: Bytes = Bytes::new(1000);
+    // /// The size of the packet header.
+    // pub const SZ_HDR: Bytes = Bytes::new(48);
 
     pub(crate) fn hrtt(&self) -> Nanosecs {
         self.src2btl + self.btl2dst
     }
 
-    pub(crate) fn min_count_in(size: Bytes) -> usize {
+    pub(crate) fn min_count_in(size: Bytes, sz_pktmax: Bytes) -> usize {
         if size == Bytes::ZERO {
             0
         } else {
-            size.into_usize() / Self::SZ_MAX.into_usize() + 1
+            size.into_usize() / sz_pktmax.into_usize() + 1
         }
     }
 }

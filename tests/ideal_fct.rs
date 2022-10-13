@@ -37,6 +37,8 @@ fn ideal_fct() {
         .dctcp_marking_threshold(Kilobytes::new(300))
         .dctcp_gain(0.0625)
         .dctcp_ai(Mbps::new(615))
+        .sz_pktmax(Bytes::new(1000))
+        .sz_pkthdr(Bytes::new(48))
         .build();
     let records = minim::run(cfg);
     for record in records {

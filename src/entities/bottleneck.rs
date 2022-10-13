@@ -62,7 +62,7 @@ impl<Q: QDisc> Bottleneck<Q> {
                 ctx.schedule(bw_delta, BottleneckCmd::new_step());
                 // Send an ACK back to the flow
                 let prop_delta = (pkt.btl2dst + pkt.hrtt()).into_delta();
-                let nr_bytes_to_ack = pkt.size - Packet::SZ_HDR;
+                let nr_bytes_to_ack = pkt.size - ctx.sz_pkthdr;
                 let marked = self.qsize > self.marking_threshold;
                 ctx.schedule(
                     bw_delta + prop_delta,

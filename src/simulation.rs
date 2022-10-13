@@ -40,6 +40,11 @@ pub(crate) struct Simulation<Q: QDisc> {
     #[builder(setter(into))]
     dctcp_ai: BitsPerSec,
 
+    #[builder(setter(into))]
+    sz_pktmax: Bytes,
+    #[builder(setter(into))]
+    sz_pkthdr: Bytes,
+
     // Used for termination
     timeout: Option<Time>,
 }
@@ -82,6 +87,8 @@ impl<Q: QDisc> Simulation<Q> {
             window: self.window,
             dctcp_gain: self.dctcp_gain,
             dctcp_ai: self.dctcp_ai,
+            sz_pktmax: self.sz_pktmax,
+            sz_pkthdr: self.sz_pkthdr,
         }
     }
 
@@ -160,6 +167,8 @@ pub(crate) struct Context {
     pub(crate) window: Bytes,
     pub(crate) dctcp_gain: f64,
     pub(crate) dctcp_ai: BitsPerSec,
+    pub(crate) sz_pktmax: Bytes,
+    pub(crate) sz_pkthdr: Bytes,
 }
 
 impl Context {
