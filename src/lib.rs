@@ -1,7 +1,7 @@
 //! Minim is a custom single-link simulator built for the Parsimon project. Given a
 //! [bottleneck link configuration](Config), [congestion control parameters](Config)
 //! (only DCTCP is currently supported), a list of [sources](SourceDesc), and a list of
-//! [flows](FlowDesc), Minim will output a list of [records](Record).
+//! [flows](FlowDesc), Minim will output a list of [records](Record) via the [run] function.
 
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
 
