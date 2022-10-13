@@ -153,11 +153,17 @@ enum CaState {
     One,
 }
 
+/// A flow configuration.
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct FlowDesc {
+    /// The flow ID.
     pub id: FlowId,
+    /// The originating source ID.
     pub source: SourceId,
+    /// The flow size.
     pub size: Bytes,
+    /// The flow's start time.
     pub start: Nanosecs,
-    pub delay2dst: Nanosecs, // propagation delay to destination
+    /// The propagation delay between the source and the destination.
+    pub delay2dst: Nanosecs,
 }

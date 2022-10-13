@@ -10,28 +10,39 @@ use crate::{
     FlowDesc, Record, SourceDesc,
 };
 
+/// A simulation configuration.
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Config<Q: QDisc> {
+    /// The bottleneck bandwidth.
     #[builder(setter(into))]
-    bandwidth: BitsPerSec,
-    queue: Q,
-    sources: Vec<SourceDesc>,
-    flows: Vec<FlowDesc>,
+    pub bandwidth: BitsPerSec,
+    /// The bottleneck queue.
+    pub queue: Q,
+    /// The list of sources.
+    pub sources: Vec<SourceDesc>,
+    /// The list of flows.
+    pub flows: Vec<FlowDesc>,
 
-    // Rate control configuration
+    /// The sending window.
     #[builder(setter(into))]
-    window: Bytes,
+    pub window: Bytes,
+    /// The DCTCP marking threshold.
     #[builder(setter(into))]
-    dctcp_marking_threshold: Bytes,
-    dctcp_gain: f64,
+    pub dctcp_marking_threshold: Bytes,
+    /// The DCTCP gain.
+    pub dctcp_gain: f64,
+    /// The DCTCP additive increase.
     #[builder(setter(into))]
-    dctcp_ai: BitsPerSec,
+    pub dctcp_ai: BitsPerSec,
 
+    /// The simulation timeout, if any.
     #[builder(default, setter(into, strip_option))]
-    timeout: Option<Nanosecs>,
+    pub timeout: Option<Nanosecs>,
 }
 
-pub fn run<Q: QDisc>(cfg: Config<Q>) -> Vec<Record> {
+/// Runs the simulation specified by `cfg` and returns a list of [records](Record).
+pub fn run<Q: QDisc>(mut cfg: Config<Q>) -> Vec<Record> {
+    cfg.flows.sort_by_key(|f| f.start);
     let workload = Workload::new(cfg.flows.into());
     let sources = cfg
         .sources
@@ -62,16 +73,20 @@ pub fn run<Q: QDisc>(cfg: Config<Q>) -> Vec<Record> {
     sim.run()
 }
 
-pub fn read_flows(path: impl AsRef<Path>) -> Result<Vec<FlowDesc>, Error> {
+/// Reads a list of [flows](FlowDesc) from `path`.
+pub fn read_flows(path: impl AsRef<Path>) -> Result<Vec<FlowDesc>, ReadFlowsError> {
     let s = std::fs::read_to_string(path)?;
     Ok(serde_json::from_str(&s)?)
 }
 
+/// The error type returned by [read_flows].
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
+pub enum ReadFlowsError {
+    /// Serialization/deserialization error.
     #[error("serde error")]
     Serde(#[from] serde_json::Error),
 
+    /// IO error.
     #[error("IO error")]
     Io(#[from] std::io::Error),
 }

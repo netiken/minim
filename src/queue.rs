@@ -1,15 +1,24 @@
-use std::collections::VecDeque;
+//! Queueing disciplines for the bottleneck link.
+
+use std::collections::{hash_map::Entry, VecDeque};
 
 use rustc_hash::FxHashMap;
 
 use crate::{packet::Packet, FlowId};
 
+/// The operations any queueing discipline supports.
 pub trait QDisc {
+    /// Enqueue a packet.
     fn enqueue(&mut self, pkt: Packet);
+
+    /// Dequeue a packet.
     fn dequeue(&mut self) -> Option<Packet>;
+
+    /// Returns true iff the queue is empty.
     fn is_empty(&self) -> bool;
 }
 
+/// A first-in first-out queue.
 #[derive(Debug, Default, derive_new::new)]
 pub struct FifoQ {
     #[new(default)]
@@ -30,8 +39,7 @@ impl QDisc for FifoQ {
     }
 }
 
-/// This queue implements round-robin among flows, where each flow is
-/// represented by a `VecDeque` of `Packet`s.
+/// A round-robin queue among flows, where each flow is represented by a `VecDeque` of [packets](Packet).
 #[derive(Debug, Default, derive_new::new)]
 pub struct RrQ {
     #[new(default)]
@@ -40,15 +48,14 @@ pub struct RrQ {
     order: VecDeque<FlowId>,
 }
 
-/// Outside these functions, the `RrQueue` should _never_ contain an empty
-/// `VecDeque`. That way, if `dequeue` returns `None`, we can be certain that
-/// _no_ flows have any packets to send.
+// Outside these functions, the `RrQueue` should _never_ contain an empty `VecDeque`. That way, if
+// `dequeue` returns `None`, we can be certain that _no_ flows have any packets to send.
 impl QDisc for RrQ {
     fn enqueue(&mut self, pkt: Packet) {
         let flow_id = pkt.flow_id;
-        if !self.members.contains_key(&flow_id) {
+        if let Entry::Vacant(e) = self.members.entry(flow_id) {
             self.order.push_back(flow_id);
-            self.members.insert(flow_id, VecDeque::new());
+            e.insert(VecDeque::new());
         }
         self.members.get_mut(&flow_id).unwrap().push_back(pkt);
     }

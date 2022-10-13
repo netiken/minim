@@ -4,8 +4,7 @@ use minim::{
     Config, FlowDesc, FlowId, SourceDesc, SourceId,
 };
 
-// Make sure FCTs match up for short flows and long flows. For long flows, there may be some minor
-// rounding errors.
+// Make sure FCTs match up for short flows and long flows.
 #[test]
 fn ideal_fct() {
     let source = SourceDesc::builder()

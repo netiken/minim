@@ -6,6 +6,7 @@ use crate::{
     FlowId,
 };
 
+/// A packet of data.
 #[derive(Debug, Clone, Copy, TypedBuilder)]
 pub struct Packet {
     pub(crate) flow_id: FlowId,
@@ -16,8 +17,11 @@ pub struct Packet {
     pub(crate) is_last: bool,
 }
 
+// TODO: `SZ_MAX` and `SZ_HDR` should be configurable somehow
 impl Packet {
+    /// The maximum packet size.
     pub const SZ_MAX: Bytes = Bytes::new(1000);
+    /// The size of the packet header.
     pub const SZ_HDR: Bytes = Bytes::new(48);
 
     pub(crate) fn hrtt(&self) -> Nanosecs {
