@@ -3,7 +3,7 @@ use typed_builder::TypedBuilder;
 use crate::{
     entities::source::SourceId,
     units::{Bytes, Nanosecs},
-    FlowId,
+    FlowId, time::Time,
 };
 
 /// A packet of data.
@@ -15,6 +15,12 @@ pub struct Packet {
     pub(crate) src2btl: Nanosecs,
     pub(crate) btl2dst: Nanosecs,
     pub(crate) is_last: bool,
+    
+    // Packet tracing
+    #[builder(default)]
+    pub(crate) t_enq: Option<Time>,
+    #[builder(default)]
+    pub(crate) t_deq: Option<Time>,
 }
 
 // TODO: `SZ_MAX` and `SZ_HDR` should be configurable somehow

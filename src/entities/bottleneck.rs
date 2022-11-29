@@ -40,7 +40,8 @@ impl<Q: QDisc> Bottleneck<Q> {
 
 impl<Q: QDisc> Bottleneck<Q> {
     #[must_use]
-    pub(crate) fn receive(&mut self, pkt: Packet, ctx: Context) -> EventList {
+    pub(crate) fn receive(&mut self, mut pkt: Packet, ctx: Context) -> EventList {
+        pkt.t_enq = Some(ctx.cur_time);
         // Enqueue the packet and update state
         self.enqueue(pkt);
         match self.status {
@@ -56,7 +57,9 @@ impl<Q: QDisc> Bottleneck<Q> {
     pub(crate) fn step(&mut self, mut ctx: Context) -> EventList {
         assert!(self.status == Status::Running);
         match self.dequeue() {
-            Some(pkt) => {
+            Some(mut pkt) => {
+                pkt.t_deq = Some(ctx.cur_time);
+                println!("{},{},{}", pkt.size, pkt.t_enq.unwrap(), pkt.t_deq.unwrap());
                 // Service the packet
                 let bw_delta = self.bandwidth.length(pkt.size).into_delta();
                 ctx.schedule(bw_delta, BottleneckCmd::new_step());
