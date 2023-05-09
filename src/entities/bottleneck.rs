@@ -59,7 +59,7 @@ impl<Q: QDisc> Bottleneck<Q> {
         match self.dequeue() {
             Some(mut pkt) => {
                 pkt.t_deq = Some(ctx.cur_time);
-                println!("{},{},{}", pkt.size, pkt.t_enq.unwrap(), pkt.t_deq.unwrap());
+                println!("{},{},{},{},{},{},{}", pkt.flow_id, pkt.source_id, pkt.size, pkt.src2btl, pkt.btl2dst, pkt.t_enq.unwrap(), pkt.t_deq.unwrap());
                 // Service the packet
                 let bw_delta = self.bandwidth.length(pkt.size).into_delta();
                 ctx.schedule(bw_delta, BottleneckCmd::new_step());
