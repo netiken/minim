@@ -2,6 +2,7 @@ use std::cmp;
 
 use crate::{
     packet::Ack,
+    port::QIndex,
     simulation::Context,
     time::Time,
     units::{BitsPerSec, Bytes, Nanosecs},
@@ -14,6 +15,7 @@ identifier!(FlowId);
 pub(crate) struct Flow {
     pub(crate) id: FlowId,
     source: SourceId,
+    qindex: QIndex,
     size: Bytes,
     #[builder(setter(into))]
     src2btl: Nanosecs,
@@ -98,6 +100,7 @@ impl Flow {
         Packet::builder()
             .flow_id(self.id)
             .source_id(self.source)
+            .qindex(self.qindex)
             .size(sz_pkt)
             .is_last(is_last)
             .src2btl(self.src2btl)
@@ -161,6 +164,8 @@ pub struct FlowDesc {
     pub id: FlowId,
     /// The originating source ID.
     pub source: SourceId,
+    /// The queue index.
+    pub qindex: QIndex,
     /// The flow size.
     pub size: Bytes,
     /// The flow's start time.

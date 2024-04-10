@@ -1,48 +1,28 @@
 use crate::{
     entities::source::SourceCmd,
     packet::{Ack, Packet},
-    queue::QDisc,
+    port::Port,
     simulation::{event::EventList, Context},
     units::{BitsPerSec, Bytes},
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
-pub(crate) struct Bottleneck<Q: QDisc> {
+pub(crate) struct Bottleneck {
     #[builder(setter(into))]
     pub(crate) bandwidth: BitsPerSec,
-    queue: Q,
+    port: Port,
     #[builder(default, setter(skip))]
     status: Status,
 
-    // DCTCP
-    #[builder(default, setter(skip))]
-    qsize: Bytes,
     #[builder(setter(into))]
     marking_threshold: Bytes,
 }
 
-impl<Q: QDisc> Bottleneck<Q> {
-    fn enqueue(&mut self, pkt: Packet) {
-        self.queue.enqueue(pkt);
-        self.qsize += pkt.size;
-    }
-
-    fn dequeue(&mut self) -> Option<Packet> {
-        match self.queue.dequeue() {
-            Some(pkt) => {
-                self.qsize -= pkt.size;
-                Some(pkt)
-            }
-            None => None,
-        }
-    }
-}
-
-impl<Q: QDisc> Bottleneck<Q> {
+impl Bottleneck {
     #[must_use]
     pub(crate) fn receive(&mut self, pkt: Packet, ctx: Context) -> EventList {
         // Enqueue the packet and update state
-        self.enqueue(pkt);
+        self.port[pkt.qindex].enqueue(pkt);
         match self.status {
             Status::Running => ctx.into_events(),
             Status::Blocked => {
@@ -55,15 +35,16 @@ impl<Q: QDisc> Bottleneck<Q> {
     #[must_use]
     pub(crate) fn step(&mut self, mut ctx: Context) -> EventList {
         assert!(self.status == Status::Running);
-        match self.dequeue() {
-            Some(pkt) => {
+        match self.port.pick_dequeue_index() {
+            Some(qidx) => {
+                let pkt = self.port[qidx].dequeue().expect("unexpected empty queue");
                 // Service the packet
                 let bw_delta = self.bandwidth.length(pkt.size).into_delta();
                 ctx.schedule(bw_delta, BottleneckCmd::new_step());
                 // Send an ACK back to the flow
                 let prop_delta = (pkt.btl2dst + pkt.hrtt()).into_delta();
                 let nr_bytes_to_ack = pkt.size - ctx.sz_pkthdr;
-                let marked = self.qsize > self.marking_threshold;
+                let marked = self.port[qidx].size() > self.marking_threshold;
                 ctx.schedule(
                     bw_delta + prop_delta,
                     SourceCmd::new_rcv_ack(

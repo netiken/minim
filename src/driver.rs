@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     entities::{bottleneck::Bottleneck, source::Source, workload::Workload},
-    queue::QDisc,
+    port::Port,
     simulation::Simulation,
     units::{BitsPerSec, Bytes, Nanosecs},
     FlowDesc, Record, SourceDesc,
@@ -12,16 +12,16 @@ use crate::{
 
 /// A simulation configuration.
 #[derive(Debug, typed_builder::TypedBuilder)]
-pub struct Config<Q: QDisc> {
+pub struct Config {
     /// The bottleneck bandwidth.
     #[builder(setter(into))]
     pub bandwidth: BitsPerSec,
-    /// The bottleneck queue.
-    pub queue: Q,
     /// The list of sources.
     pub sources: Vec<SourceDesc>,
     /// The list of flows.
     pub flows: Vec<FlowDesc>,
+    /// The switch weights.
+    pub quanta: Vec<Bytes>,
 
     /// The sending window.
     #[builder(setter(into))]
@@ -48,7 +48,7 @@ pub struct Config<Q: QDisc> {
 }
 
 /// Runs the simulation specified by `cfg` and returns a list of [records](Record).
-pub fn run<Q: QDisc>(mut cfg: Config<Q>) -> Vec<Record> {
+pub fn run(mut cfg: Config) -> Result<Vec<Record>, Error> {
     cfg.flows.sort_by_key(|f| f.start);
     let workload = Workload::new(cfg.flows.into());
     let sources = cfg
@@ -63,9 +63,12 @@ pub fn run<Q: QDisc>(mut cfg: Config<Q>) -> Vec<Record> {
             (s.id, source)
         })
         .collect::<FxHashMap<_, _>>();
+    if !cfg.quanta.iter().all(|&q| q > Bytes::ZERO) {
+        return Err(Error::InvalidQuanta);
+    }
     let bottleneck = Bottleneck::builder()
         .bandwidth(cfg.bandwidth)
-        .queue(cfg.queue)
+        .port(Port::new(&cfg.quanta))
         .marking_threshold(cfg.dctcp_marking_threshold)
         .build();
     let sim = Simulation::builder()
@@ -79,7 +82,15 @@ pub fn run<Q: QDisc>(mut cfg: Config<Q>) -> Vec<Record> {
         .sz_pkthdr(cfg.sz_pkthdr)
         .timeout(cfg.timeout.map(|v| v.into_time()))
         .build();
-    sim.run()
+    Ok(sim.run())
+}
+
+/// Simulator configuration errors.
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    /// Switch quanta must be positive.
+    #[error("Switch quanta must be positive")]
+    InvalidQuanta,
 }
 
 /// Reads a list of [flows](FlowDesc) from `path`.
