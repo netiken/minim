@@ -1,12 +1,11 @@
 use minim::{
-    queue::FifoQ,
     units::{Bytes, Gbps, Kilobytes, Mbps, Nanosecs, Secs},
-    Config, FlowDesc, FlowId, SourceDesc, SourceId,
+    Config, FlowDesc, FlowId, QIndex, SourceDesc, SourceId,
 };
 
 // Make sure FCTs match up for short flows and long flows.
 #[test]
-fn ideal_fct() {
+fn ideal_fct() -> anyhow::Result<()> {
     let source = SourceDesc::builder()
         .id(SourceId::ZERO)
         .delay2btl(Nanosecs::new(1_000))
@@ -16,6 +15,7 @@ fn ideal_fct() {
         FlowDesc {
             id: FlowId::new(0),
             source: SourceId::ZERO,
+            qindex: QIndex::ZERO,
             size: Bytes::new(100),
             start: Secs::new(1).into_ns(),
             delay2dst: Nanosecs::new(2_000),
@@ -23,6 +23,7 @@ fn ideal_fct() {
         FlowDesc {
             id: FlowId::new(1),
             source: SourceId::ZERO,
+            qindex: QIndex::ZERO,
             size: Bytes::new(1_000_000),
             start: Secs::new(2).into_ns(),
             delay2dst: Nanosecs::new(2_000),
@@ -30,9 +31,9 @@ fn ideal_fct() {
     ];
     let cfg = Config::builder()
         .bandwidth(Gbps::new(40))
-        .queue(FifoQ::new())
         .sources(vec![source])
         .flows(flows)
+        .quanta(vec![Bytes::new(1000)])
         .window(Kilobytes::new(100))
         .dctcp_marking_threshold(Kilobytes::new(300))
         .dctcp_gain(0.0625)
@@ -40,8 +41,9 @@ fn ideal_fct() {
         .sz_pktmax(Bytes::new(1000))
         .sz_pkthdr(Bytes::new(48))
         .build();
-    let records = minim::run(cfg);
+    let records = minim::run(cfg)?;
     for record in records {
         assert_eq!(record.fct, record.ideal);
     }
+    Ok(())
 }

@@ -10,7 +10,6 @@ use crate::{
         source::{Source, SourceCmd, SourceId},
         workload::{Workload, WorkloadCmd},
     },
-    queue::QDisc,
     time::{Delta, Time},
     units::{BitsPerSec, Bytes},
 };
@@ -21,7 +20,7 @@ use self::{
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
-pub(crate) struct Simulation<Q: QDisc> {
+pub(crate) struct Simulation {
     // Run-time
     #[builder(default, setter(skip))]
     cur_time: Time,
@@ -31,7 +30,7 @@ pub(crate) struct Simulation<Q: QDisc> {
     // Entities
     workload: Workload,
     sources: FxHashMap<SourceId, Source>,
-    bottleneck: Bottleneck<Q>,
+    bottleneck: Bottleneck,
 
     // Rate control configuration
     #[builder(setter(into))]
@@ -49,7 +48,7 @@ pub(crate) struct Simulation<Q: QDisc> {
     timeout: Option<Time>,
 }
 
-impl<Q: QDisc> Simulation<Q> {
+impl Simulation {
     pub(crate) fn run(mut self) -> Vec<Record> {
         // Kick off the simulation by starting the workload
         let ev = Event::new(Time::ZERO, WorkloadCmd::new_step());
@@ -101,7 +100,7 @@ impl<Q: QDisc> Simulation<Q> {
 }
 
 // Command handlers
-impl<Q: QDisc> Simulation<Q> {
+impl Simulation {
     fn apply(&mut self, cmd: Command) -> EventList {
         match cmd {
             Command::Workload(cmd) => self.apply_workload(cmd),

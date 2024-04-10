@@ -5,6 +5,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     flow::{Flow, FlowDesc},
     packet::Ack,
+    port::QIndex,
     simulation::{event::EventList, Context},
     time::Time,
     units::{BitsPerSec, Bytes, Nanosecs},
@@ -95,6 +96,7 @@ impl Source {
             id: desc.id,
             size: desc.size,
             start: desc.start,
+            qindex: desc.qindex,
             src2btl: self.delay2btl,
             btl2dst: desc.delay2dst - self.delay2btl,
             max_rate: self.link_rate,
@@ -103,6 +105,7 @@ impl Source {
         let flow = Flow::builder()
             .id(desc.id)
             .source(desc.source)
+            .qindex(desc.qindex)
             .size(desc.size)
             .rate(self.link_rate)
             .max_rate(self.link_rate)
@@ -155,6 +158,7 @@ impl Source {
             id: flow.id,
             size: flow.size,
             start: flow.start,
+            qindex: flow.qindex,
             fct: ctx.cur_time.into_ns() - flow.start,
             ideal,
         };
@@ -266,6 +270,7 @@ struct FlowInfo {
     id: FlowId,
     size: Bytes,
     start: Nanosecs,
+    qindex: QIndex,
     src2btl: Nanosecs,
     btl2dst: Nanosecs,
     max_rate: BitsPerSec,

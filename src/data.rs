@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::{
+    port::QIndex,
     units::{Bytes, Nanosecs},
     FlowId,
 };
@@ -14,6 +15,8 @@ pub struct Record {
     pub size: Bytes,
     /// The start time of the flow.
     pub start: Nanosecs,
+    /// The queue index.
+    pub qindex: QIndex,
     /// The flow completion time. A flow is complete when all bytes have been delivered to the
     /// destination.
     pub fct: Nanosecs,
