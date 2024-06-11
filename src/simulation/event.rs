@@ -1,3 +1,5 @@
+#![allow(clippy::non_canonical_partial_ord_impl)]
+
 use std::cmp::Reverse;
 
 use smallvec::SmallVec;
