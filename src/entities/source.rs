@@ -112,7 +112,7 @@ impl Source {
             .tnext(ctx.cur_time)
             .src2btl(self.delay2btl)
             .btl2dst(btl2dst)
-            .window(ctx.window)
+            .window(ctx.windows[desc.qindex.inner()])
             .gain(ctx.dctcp_gain)
             .additive_inc(ctx.dctcp_ai)
             .build();

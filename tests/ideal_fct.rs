@@ -34,7 +34,7 @@ fn ideal_fct() -> anyhow::Result<()> {
         .sources(vec![source])
         .flows(flows)
         .quanta(vec![Bytes::new(1000)])
-        .window(Kilobytes::new(100))
+        .windows(vec![Bytes::new(100_000)])
         .dctcp_marking_thresholds(vec![Kilobytes::new(300)])
         .dctcp_gain(0.0625)
         .dctcp_ai(Mbps::new(615))

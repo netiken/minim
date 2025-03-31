@@ -34,7 +34,7 @@ pub(crate) struct Simulation {
 
     // Rate control configuration
     #[builder(setter(into))]
-    window: Bytes,
+    window: Vec<Bytes>,
     dctcp_gain: f64,
     #[builder(setter(into))]
     dctcp_ai: BitsPerSec,
@@ -83,7 +83,7 @@ impl Simulation {
             cur_time: self.cur_time,
             events: EventList::new(),
             btl_bandwidth: self.bottleneck.bandwidth,
-            window: self.window,
+            windows: self.window.clone(),
             dctcp_gain: self.dctcp_gain,
             dctcp_ai: self.dctcp_ai,
             sz_pktmax: self.sz_pktmax,
@@ -163,7 +163,7 @@ pub(crate) struct Context {
 
     // Configuration
     pub(crate) btl_bandwidth: BitsPerSec,
-    pub(crate) window: Bytes,
+    pub(crate) windows: Vec<Bytes>,
     pub(crate) dctcp_gain: f64,
     pub(crate) dctcp_ai: BitsPerSec,
     pub(crate) sz_pktmax: Bytes,

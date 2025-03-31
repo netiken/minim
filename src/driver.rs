@@ -20,12 +20,12 @@ pub struct Config {
     pub sources: Vec<SourceDesc>,
     /// The list of flows.
     pub flows: Vec<FlowDesc>,
-    /// The switch weights.
+    /// The per-class switch weights.
     pub quanta: Vec<Bytes>,
 
-    /// The sending window.
+    /// The per-class initial windows.
     #[builder(setter(into))]
-    pub window: Bytes,
+    pub windows: Vec<Bytes>,
     /// The DCTCP marking threshold.
     #[builder(setter(into))]
     pub dctcp_marking_thresholds: Vec<Kilobytes>,
@@ -74,7 +74,7 @@ pub fn run(mut cfg: Config) -> Result<Vec<Record>, Error> {
         .workload(workload)
         .sources(sources)
         .bottleneck(bottleneck)
-        .window(cfg.window)
+        .window(cfg.windows)
         .dctcp_gain(cfg.dctcp_gain)
         .dctcp_ai(cfg.dctcp_ai)
         .sz_pktmax(cfg.sz_pktmax)
