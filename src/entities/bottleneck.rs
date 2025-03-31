@@ -3,7 +3,7 @@ use crate::{
     packet::{Ack, Packet},
     port::Port,
     simulation::{event::EventList, Context},
-    units::{BitsPerSec, Bytes},
+    units::BitsPerSec,
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
@@ -13,9 +13,6 @@ pub(crate) struct Bottleneck {
     port: Port,
     #[builder(default, setter(skip))]
     status: Status,
-
-    #[builder(setter(into))]
-    marking_threshold: Bytes,
 }
 
 impl Bottleneck {
@@ -44,7 +41,8 @@ impl Bottleneck {
                 // Send an ACK back to the flow
                 let prop_delta = (pkt.btl2dst + pkt.hrtt()).into_delta();
                 let nr_bytes_to_ack = pkt.size - ctx.sz_pkthdr;
-                let marked = self.port[qidx].size() > self.marking_threshold;
+                let marking_threshold = self.port.marking_threshold(qidx).into_bytes();
+                let marked = self.port[qidx].size() > marking_threshold;
                 ctx.schedule(
                     bw_delta + prop_delta,
                     SourceCmd::new_rcv_ack(

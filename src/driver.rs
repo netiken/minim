@@ -6,7 +6,7 @@ use crate::{
     entities::{bottleneck::Bottleneck, source::Source, workload::Workload},
     port::Port,
     simulation::Simulation,
-    units::{BitsPerSec, Bytes, Nanosecs},
+    units::{BitsPerSec, Bytes, Kilobytes, Nanosecs},
     FlowDesc, Record, SourceDesc,
 };
 
@@ -28,7 +28,7 @@ pub struct Config {
     pub window: Bytes,
     /// The DCTCP marking threshold.
     #[builder(setter(into))]
-    pub dctcp_marking_threshold: Bytes,
+    pub dctcp_marking_thresholds: Vec<Kilobytes>,
     /// The DCTCP gain.
     pub dctcp_gain: f64,
     /// The DCTCP additive increase.
@@ -68,8 +68,7 @@ pub fn run(mut cfg: Config) -> Result<Vec<Record>, Error> {
     }
     let bottleneck = Bottleneck::builder()
         .bandwidth(cfg.bandwidth)
-        .port(Port::new(&cfg.quanta))
-        .marking_threshold(cfg.dctcp_marking_threshold)
+        .port(Port::new(&cfg.quanta, &cfg.dctcp_marking_thresholds))
         .build();
     let sim = Simulation::builder()
         .workload(workload)

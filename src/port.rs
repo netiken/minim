@@ -3,7 +3,10 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::{packet::Packet, units::Bytes};
+use crate::{
+    packet::Packet,
+    units::{Bytes, Kilobytes},
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Port {
@@ -12,10 +15,11 @@ pub(crate) struct Port {
     deficits: Vec<Bytes>,
     counter: usize,
     should_bump: bool,
+    marking_thresholds: Vec<Kilobytes>,
 }
 
 impl Port {
-    pub(crate) fn new(quanta: &[Bytes]) -> Self {
+    pub(crate) fn new(quanta: &[Bytes], marking_thresholds: &[Kilobytes]) -> Self {
         let nr_queues = quanta.len();
         Self {
             queues: (0..nr_queues).map(|_| Queue::default()).collect(),
@@ -23,6 +27,7 @@ impl Port {
             deficits: vec![Bytes::ZERO; nr_queues],
             counter: 0,
             should_bump: true,
+            marking_thresholds: Vec::from(marking_thresholds),
         }
     }
 
@@ -73,6 +78,10 @@ impl Port {
                 continue;
             }
         }
+    }
+
+    pub(crate) fn marking_threshold(&self, qindex: QIndex) -> Kilobytes {
+        self.marking_thresholds[qindex.0]
     }
 }
 
@@ -166,6 +175,8 @@ mod tests {
 
     use super::*;
 
+    const DEFAULT_K: Kilobytes = Kilobytes::new(100);
+
     fn mk_pkt(flow_id: FlowId, qindex: QIndex, size: Bytes) -> Packet {
         Packet {
             flow_id,
@@ -186,14 +197,14 @@ mod tests {
 
     #[test]
     fn drr_empty_none() -> anyhow::Result<()> {
-        let mut port = Port::new(&[Bytes::new(1); 8]);
+        let mut port = Port::new(&[Bytes::new(1); 8], &[DEFAULT_K; 8]);
         assert!(port.pick_dequeue_index().is_none());
         Ok(())
     }
 
     #[test]
     fn drr_nonempty_some() -> anyhow::Result<()> {
-        let mut port = Port::new(&[Bytes::new(1); 8]);
+        let mut port = Port::new(&[Bytes::new(1); 8], &[DEFAULT_K; 8]);
         let pkt = mk_pkt(FlowId::ZERO, QIndex::ZERO, Bytes::new(1_000));
         port[pkt.qindex].enqueue(pkt);
         assert_eq!(port.pick_dequeue_index(), Some(QIndex::ZERO));
@@ -202,7 +213,7 @@ mod tests {
 
     #[test]
     fn drr_empty_resets_deficit() -> anyhow::Result<()> {
-        let mut port = Port::new(&[Bytes::new(1); 2]);
+        let mut port = Port::new(&[Bytes::new(1); 2], &[DEFAULT_K; 2]);
 
         // One packet in queue 0
         let pkt = mk_pkt(FlowId::ZERO, QIndex::ZERO, Bytes::new(1_000));
@@ -234,7 +245,10 @@ mod tests {
 
     #[test]
     fn drr_respects_weights() -> anyhow::Result<()> {
-        let mut port = Port::new(&[Bytes::new(1), Bytes::new(3)]);
+        let mut port = Port::new(
+            &[Bytes::new(1), Bytes::new(3), Bytes::new(5)],
+            &[DEFAULT_K; 3],
+        );
 
         let pkt1 = mk_pkt(FlowId::ZERO, QIndex::ZERO, Bytes::ONE);
         let pkt2 = mk_pkt(FlowId::ONE, QIndex::ONE, Bytes::ONE);
