@@ -2,7 +2,8 @@ use std::collections::VecDeque;
 
 use crate::{
     flow::FlowDesc,
-    simulation::{event::EventList, Context}, units::Bytes,
+    simulation::{event::EventList, Context},
+    units::Bytes,
 };
 
 use super::source::SourceCmd;

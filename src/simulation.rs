@@ -78,19 +78,6 @@ impl Simulation {
         self.schedule.is_empty() || self.cur_time > self.timeout.unwrap_or(Time::MAX)
     }
 
-    fn context(&self) -> Context {
-        Context {
-            cur_time: self.cur_time,
-            events: EventList::new(),
-            btl_bandwidth: self.bottleneck.bandwidth,
-            windows: self.window.clone(),
-            dctcp_gain: self.dctcp_gain,
-            dctcp_ai: self.dctcp_ai,
-            sz_pktmax: self.sz_pktmax,
-            sz_pkthdr: self.sz_pkthdr,
-        }
-    }
-
     fn finish(self) -> Vec<Record> {
         self.sources
             .into_iter()
@@ -111,14 +98,52 @@ impl Simulation {
     }
 
     fn apply_workload(&mut self, cmd: WorkloadCmd) -> EventList {
-        let ctx = self.context();
+        // Create context with explicit lifetime
+        let cur_time = self.cur_time;
+        let btl_bandwidth = self.bottleneck.bandwidth;
+        let windows = &self.window;
+        let dctcp_gain = self.dctcp_gain;
+        let dctcp_ai = self.dctcp_ai;
+        let sz_pktmax = self.sz_pktmax;
+        let sz_pkthdr = self.sz_pkthdr;
+
+        let ctx = Context {
+            cur_time,
+            events: EventList::new(),
+            btl_bandwidth,
+            windows,
+            dctcp_gain,
+            dctcp_ai,
+            sz_pktmax,
+            sz_pkthdr,
+        };
+
         match cmd {
             WorkloadCmd::Step => self.workload.step(ctx),
         }
     }
 
     fn apply_source(&mut self, cmd: SourceCmd) -> EventList {
-        let ctx = self.context();
+        // Create context with explicit lifetime
+        let cur_time = self.cur_time;
+        let btl_bandwidth = self.bottleneck.bandwidth;
+        let windows = &self.window;
+        let dctcp_gain = self.dctcp_gain;
+        let dctcp_ai = self.dctcp_ai;
+        let sz_pktmax = self.sz_pktmax;
+        let sz_pkthdr = self.sz_pkthdr;
+
+        let ctx = Context {
+            cur_time,
+            events: EventList::new(),
+            btl_bandwidth,
+            windows,
+            dctcp_gain,
+            dctcp_ai,
+            sz_pktmax,
+            sz_pkthdr,
+        };
+
         match cmd {
             SourceCmd::TrySend { id, version } => {
                 let source = self.sources.get_mut(&id).expect("invalid source ID");
@@ -140,7 +165,26 @@ impl Simulation {
     }
 
     fn apply_bottleneck(&mut self, cmd: BottleneckCmd) -> EventList {
-        let ctx = self.context();
+        // Create context with explicit lifetime
+        let cur_time = self.cur_time;
+        let btl_bandwidth = self.bottleneck.bandwidth;
+        let windows = &self.window;
+        let dctcp_gain = self.dctcp_gain;
+        let dctcp_ai = self.dctcp_ai;
+        let sz_pktmax = self.sz_pktmax;
+        let sz_pkthdr = self.sz_pkthdr;
+
+        let ctx = Context {
+            cur_time,
+            events: EventList::new(),
+            btl_bandwidth,
+            windows,
+            dctcp_gain,
+            dctcp_ai,
+            sz_pktmax,
+            sz_pkthdr,
+        };
+
         match cmd {
             BottleneckCmd::Receive(pkt) => self.bottleneck.receive(pkt, ctx),
             BottleneckCmd::Step => self.bottleneck.step(ctx),
@@ -157,20 +201,20 @@ pub(crate) enum Command {
 }
 
 #[derive(Debug)]
-pub(crate) struct Context {
+pub(crate) struct Context<'a> {
     pub(crate) cur_time: Time,
     events: EventList,
 
     // Configuration
     pub(crate) btl_bandwidth: BitsPerSec,
-    pub(crate) windows: Vec<Bytes>,
+    pub(crate) windows: &'a [Bytes],
     pub(crate) dctcp_gain: f64,
     pub(crate) dctcp_ai: BitsPerSec,
     pub(crate) sz_pktmax: Bytes,
     pub(crate) sz_pkthdr: Bytes,
 }
 
-impl Context {
+impl Context<'_> {
     pub(crate) fn schedule(&mut self, delta: Delta, cmd: impl Into<Command>) {
         let time = self.cur_time + delta;
         self.events.push(Event::new(time, cmd.into()));

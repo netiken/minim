@@ -96,11 +96,11 @@ unit!(Secs);
 #[allow(missing_docs)]
 impl Nanosecs {
     pub fn into_time(self) -> Time {
-        Time::new(u128::from(self.0))
+        Time::new(self.0)
     }
 
     pub fn into_delta(self) -> Delta {
-        Delta::new(u128::from(self.0))
+        Delta::new(self.0)
     }
 }
 
